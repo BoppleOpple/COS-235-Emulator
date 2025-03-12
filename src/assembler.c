@@ -46,12 +46,15 @@ LIST *assembleFile(const char *path) {
 	FILE *inFile = fopen(path, "r");
 
 	LIST *machineCodeList = malloc(sizeof(LIST));
+	*machineCodeList = listCreate();
+	
 
 	unsigned int *currentInstruction = NULL;
 	while (fgets(buffer, sizeof(buffer), inFile)) {
 		currentInstruction = malloc(sizeof(unsigned int));
 
 		*currentInstruction = assembleLine(buffer);
+		printf("machineCodeList\n");
 		listAppendItem(machineCodeList, currentInstruction);
 		currentInstruction = NULL;
 	}
