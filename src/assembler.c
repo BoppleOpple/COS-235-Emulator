@@ -54,7 +54,7 @@ LIST *assembleFile(const char *path) {
 		currentInstruction = malloc(sizeof(unsigned int));
 
 		*currentInstruction = assembleLine(buffer);
-		printf("machineCodeList\n");
+		
 		listAppendItem(machineCodeList, currentInstruction);
 		currentInstruction = NULL;
 	}
@@ -77,7 +77,7 @@ void printMachineCode(unsigned int n) {
 		int bitIsOne = (1 << i <= n);
 		if (i == 4 || i == 9 || i == 14) printf(" ");
 		printf("%i", bitIsOne);
-		n -= bitIsOne * 1 << i;
+		n -= bitIsOne * (1 << i);
 	}
 
 	printf("\n");

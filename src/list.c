@@ -13,14 +13,14 @@ void listAppendItem(LIST *list, void *item) {
 		printf("list is NULL?\n");
 		exit(1);
 	}
-	
+
 	list->size++;
 	
 	// if the current item is oob, add more items
 	if (list->size >= list->maxSize) {
 		// double the size of the array
-		list->maxSize *= 2;
-		printf("%p\n", list->array);
+		list->maxSize <<= 1;
+		
 		// and safely reallocate its space
 		void **newArray = realloc(list->array, list->maxSize*sizeof(void*));
 		if (!newArray) {
