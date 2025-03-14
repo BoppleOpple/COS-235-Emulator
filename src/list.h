@@ -19,7 +19,7 @@ LIST listCreate();
 void listAppendItem(LIST *list, void *item);
 
 /*
- * sifts a room to the end of the array and decrements the size, then returns the item
+ * sifts an item to the end of the array and decrements the size, then returns the item
 **/
 void *listPop(LIST *list, int i);
 
@@ -43,4 +43,12 @@ void listClear(LIST *list);
 **/
 void listPrint(LIST *list, const char *format);
 
+/**
+ * @brief Applies a function across each element of a list
+ * 
+ * function must take a pointer and return void.
+ * 
+ * @param list The LIST* to apply `fn` to
+ * @param fn The function to be called on each element of `list`
+ */
 void listMapFunction(LIST *list, void (fn)(void *));

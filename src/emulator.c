@@ -52,15 +52,24 @@ void clearScreen() {
 	printf("\033[2J\033[H");
 }
 
-int getInternalAddress(int *ptr) {
-	return (ptr - memory);
-}
-
 void resetMemory() {
 	for (int i = 0; i < MEMORY_SIZE_WORDS; i++) memory[i] = 0;
 	
 	listClear(&programMemory);
-	LIST programMemory = listCreate();
+	programMemory = listCreate();
+}
+
+void resetPrograms() {
+	PROGRAM *lastProgram = (PROGRAM*) listGetElement(&programMemory, programMemory.size-1);
+	for (int i = 0; i < lastProgram->startAddress + lastProgram->size; i++) memory[i] = 0;
+
+	listClear(&programMemory);
+	programMemory = listCreate();
+}
+
+void resetData() {
+	PROGRAM *lastProgram = (PROGRAM*) listGetElement(&programMemory, programMemory.size-1);
+	for (int i = lastProgram->startAddress + lastProgram->size; i < MEMORY_SIZE_WORDS; i++) memory[i] = 0;
 }
 
 void resetRegisters() {
@@ -147,7 +156,7 @@ int main() {
 					break;
 				}
 
-				printf("Loaded program into memory at location %i\n", getInternalAddress(((PROGRAM *) listGetElement(&programMemory, programMemory.size-1))->entryPoint));
+				printf("Loaded program into memory at location %i\n", ((PROGRAM *) listGetElement(&programMemory, programMemory.size-1))->startAddress);
 				break;
 
 			case run:
@@ -173,15 +182,19 @@ int main() {
 					break;
 				}
 
-				printf("Program found at location %i\n", getInternalAddress(loadedProgram->entryPoint));
+				printf("Program found at location %i\n", loadedProgram->startAddress);
 				break;
 				
 			case purgep:
-				printf("purging program\n");
+				printf("Purging programs...\n");
+				resetPrograms();
+				printf("All program memory cleared!\n");
 				break;
 				
 			case purged:
-				printf("purging data\n");
+				printf("Purging data...\n");
+				resetData();
+				printf("All non-program memory cleared!\n");
 				break;
 				
 			case save:
