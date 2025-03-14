@@ -1,5 +1,6 @@
 #include "assembler.h"
 #include "list.h"
+#include "program.h"
 #include "stringUtils.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -12,13 +13,7 @@
 #define MEMORY_SIZE_WORDS ( MEMORY_SIZE_BYTES / WORD_SIZE_BYTES )
 
 #define REGISTER_COUNT 32
-#define COMMAND_COUNT 6
-
-typedef struct {
-	const char* name;
-	int* entryPoint;
-	int size;
-} PROGRAM;
+#define COMMAND_COUNT 7
 
 typedef enum : char {
 	NONE = -1,
@@ -27,6 +22,7 @@ typedef enum : char {
 	purgep,
 	purged,
 	save,
+	list,
 	quit
 } OPTION_ID;
 
@@ -42,6 +38,7 @@ const MENU_OPTION commands[COMMAND_COUNT] = {
 	{"purgep", "Purge All Programs"},
 	{"purged", "Purge All Data"},
 	{"save", "Save to Disk"},
+	{"list", "List Loaded Programs"},
 	{"quit", "Quit"}
 };
 
@@ -82,21 +79,8 @@ void printIntPointer(void *i) {
 	printf("%i\n", *(int*) i);
 }
 
-void addProgram(LIST *program) {
-	PROGRAM *programContainer = malloc(sizeof(PROGRAM));
-	if (programMemory.size > 0) {
-		PROGRAM *lastProgram = (PROGRAM *) listGetElement(&programMemory, programMemory.size-1);
-
-		programContainer->entryPoint = lastProgram->entryPoint + lastProgram->size;
-	} else {
-		programContainer->entryPoint = memory;
-	}
-	programContainer->size = program->size;
-	listAppendItem(&programMemory, programContainer);
-
-	for (int i = 0; i < programContainer->size; i++) {
-		*(programContainer->entryPoint + i) = *(int *) listGetElement(program, i);
-	}
+void printProgramName(void *i) {
+	printf("%s\n", ((PROGRAM*) i)->name);
 }
 
 void dumpMemory(const char *filepath) {
@@ -133,8 +117,6 @@ int main() {
 		
 		trimmed = trim(inBuffer);
 
-		while(isspace(*trimmed)) trimmed++;
-
 		for (int i = 0; i < COMMAND_COUNT; i++) {
 			if (strcmp(commands[i].command, trimmed) == 0) {
 				selectedOption = i;
@@ -155,21 +137,43 @@ int main() {
 
 				trimmed = trim(inBuffer);
 
-				LIST *program = assembleFile(trimmed);
-				addProgram(program);
-
-				printf("Loaded program into memory at location %i\n", getInternalAddress(((PROGRAM *) listGetElement(&programMemory, programMemory.size-1))->entryPoint));
-
-				listClear(program);
-				free(program);
-				program = NULL;
+				PROGRAM *newProgram = addProgram(trimmed, memory, &programMemory);
 
 				free(trimmed);
 				trimmed = NULL;
+
+				if (!newProgram) {
+					printf("program couldnt be loaded into memory");
+					break;
+				}
+
+				printf("Loaded program into memory at location %i\n", getInternalAddress(((PROGRAM *) listGetElement(&programMemory, programMemory.size-1))->entryPoint));
 				break;
 
 			case run:
-				printf("running program\n");
+				printf("Provide the name of the program to run:\n");
+
+				fgets(inBuffer, sizeof(inBuffer), stdin);
+
+				trimmed = trim(inBuffer);
+
+				printf("Attempting to run program \"%s\"\n", trimmed);
+
+				PROGRAM *loadedProgram = NULL;
+
+				for (int i = 0; i < programMemory.size; i++) {
+					if (strcmp(trimmed, ((PROGRAM *) listGetElement(&programMemory, i))->name) == 0) {
+						loadedProgram = (PROGRAM *) listGetElement(&programMemory, i);
+						break;
+					}
+				}
+
+				if (!loadedProgram) {
+					printf("Error loading program! Use the \"list\" command to list loaded programs\n");
+					break;
+				}
+
+				printf("Program found at location %i\n", getInternalAddress(loadedProgram->entryPoint));
 				break;
 				
 			case purgep:
@@ -183,6 +187,11 @@ int main() {
 			case save:
 				printf("saving memory to ./output/disk.txt\n");
 				dumpMemory("./output/disk.txt");
+				break;
+
+			case list:
+				printf("Listing every program name:\n");
+				listMapFunction(&programMemory, *printProgramName);
 				break;
 
 			case quit:

@@ -45,6 +45,11 @@ LIST *assembleFile(const char *path) {
 	char buffer[ASSEMBLER_BUFFER_SIZE];
 	FILE *inFile = fopen(path, "r");
 
+	if (!inFile) {
+		printf("error reading file at %s\n", path);
+		return NULL;
+	}
+
 	LIST *machineCodeList = malloc(sizeof(LIST));
 	*machineCodeList = listCreate();
 	
