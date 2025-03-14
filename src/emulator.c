@@ -15,6 +15,7 @@
 #define COMMAND_COUNT 6
 
 typedef struct {
+	const char* name;
 	int* entryPoint;
 	int size;
 } PROGRAM;
@@ -52,6 +53,10 @@ LIST programMemory = {0, 0 ,0};
 void clearScreen() {
 	// just print the ansi
 	printf("\033[2J\033[H");
+}
+
+int getInternalAddress(int *ptr) {
+	return (ptr - memory);
 }
 
 void resetMemory() {
@@ -114,6 +119,7 @@ int main() {
 	OPTION_ID selectedOption;
 	char inBuffer[512];
 	int loop = 1;
+	char *trimmed = NULL;
 
 	clearScreen();
 
@@ -125,13 +131,7 @@ int main() {
 		
 		fgets(inBuffer, sizeof(inBuffer), stdin);
 		
-		char *trimmed = inBuffer + strlen(inBuffer) - 1;
-
-		while(isspace(*trimmed)) trimmed--;
-
-		*(trimmed + 1) = 0;
-
-		trimmed = inBuffer;
+		trimmed = trim(inBuffer);
 
 		while(isspace(*trimmed)) trimmed++;
 
@@ -142,9 +142,30 @@ int main() {
 			}
 		}
 
+		free(trimmed);
+		trimmed = NULL;
+
+		printf("\n");
+
 		switch (selectedOption) {
 			case load:
-				printf("loading\n");
+				printf("Provide the path of the program to load:\n");
+
+				fgets(inBuffer, sizeof(inBuffer), stdin);
+
+				trimmed = trim(inBuffer);
+
+				LIST *program = assembleFile(trimmed);
+				addProgram(program);
+
+				printf("Loaded program into memory at location %i\n", getInternalAddress(((PROGRAM *) listGetElement(&programMemory, programMemory.size-1))->entryPoint));
+
+				listClear(program);
+				free(program);
+				program = NULL;
+
+				free(trimmed);
+				trimmed = NULL;
 				break;
 
 			case run:
@@ -160,7 +181,8 @@ int main() {
 				break;
 				
 			case save:
-				printf("saving memory\n");
+				printf("saving memory to ./output/disk.txt\n");
+				dumpMemory("./output/disk.txt");
 				break;
 
 			case quit:
@@ -174,7 +196,7 @@ int main() {
 		printf("\npress ENTER to continue\n");
 
 		fgets(inBuffer, sizeof(inBuffer), stdin);
-		
+
 		clearScreen();
 	}
 
