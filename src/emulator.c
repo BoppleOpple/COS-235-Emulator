@@ -1,5 +1,6 @@
 #include "assembler.h"
 #include "list.h"
+#include "printFuncs.h"
 #include "program.h"
 #include "stringUtils.h"
 #include <ctype.h>
@@ -78,18 +79,6 @@ void resetRegisters() {
 
 	// set the stack pointer to the end of memory
 	registers[2] = MEMORY_SIZE_WORDS;
-}
-
-void printInstruction(void *instruction) {
-	printMachineCode(*(int*) instruction);
-}
-
-void printIntPointer(void *i) {
-	printf("%i\n", *(int*) i);
-}
-
-void printProgramName(void *i) {
-	printf("%s\n", ((PROGRAM*) i)->name);
 }
 
 void dumpMemory(const char *filepath) {
