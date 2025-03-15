@@ -103,6 +103,7 @@ LIST *assembleFile(const char *path) {
 		// if an error was thrown, error out and clean up
 		if ((*currentInstruction & 0b11111) == ERROR) {
 			printf("Error assembling %s at line %i!\n", path, line);
+			fclose(inFile);
 			listClear(machineCodeList);
 			free(machineCodeList);
 			return NULL;
@@ -113,6 +114,9 @@ LIST *assembleFile(const char *path) {
 		currentInstruction = NULL;
 	}
 
+	//clean up
+	fclose(inFile);
+	
 	// return the list if no errors occured
 	return machineCodeList;
 }

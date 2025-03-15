@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// define constants
+
 #define WORD_SIZE_BYTES 4
 #define MEMORY_SIZE_KB 16
 #define MEMORY_SIZE_BYTES ( 1 << 10 ) * MEMORY_SIZE_KB
@@ -15,6 +17,8 @@
 
 #define REGISTER_COUNT 32
 #define COMMAND_COUNT 7
+
+// define IDs for each menu option, so more can be added easily
 
 typedef enum : char {
 	NONE = -1,
@@ -27,11 +31,12 @@ typedef enum : char {
 	quit
 } OPTION_ID;
 
+// store the command and its description for each command, in the same index as in the above enum
+
 typedef struct {
 	const char* command;
 	const char* description;
 } MENU_OPTION;
-
 
 const MENU_OPTION commands[COMMAND_COUNT] = {
 	{"load", "Load Program"},
@@ -43,78 +48,131 @@ const MENU_OPTION commands[COMMAND_COUNT] = {
 	{"quit", "Quit"}
 };
 
+// create arrays for memory and registers
+
 int memory[MEMORY_SIZE_WORDS];
 int registers[REGISTER_COUNT];
 
+// create a list for program memory, and ensure there are no garbage values
 LIST programMemory = {0, 0 ,0};
 
+/**
+ * @brief helper function for clearing the screen
+ */
 void clearScreen() {
 	// just print the ansi
 	printf("\033[2J\033[H");
 }
 
+/**
+ * @brief resets the memory array, programMemory list, and stack pointer
+ */
 void resetMemory() {
+	// set all words to 0
 	for (int i = 0; i < MEMORY_SIZE_WORDS; i++) memory[i] = 0;
 	
+	// clear program data
 	listClear(&programMemory);
 	programMemory = listCreate();
-}
 
-void resetPrograms() {
-	PROGRAM *lastProgram = (PROGRAM*) listGetElement(&programMemory, programMemory.size-1);
-	for (int i = 0; i < lastProgram->startAddress + lastProgram->size; i++) memory[i] = 0;
-
-	listClear(&programMemory);
-	programMemory = listCreate();
-}
-
-void resetData() {
-	PROGRAM *lastProgram = (PROGRAM*) listGetElement(&programMemory, programMemory.size-1);
-	for (int i = lastProgram->startAddress + lastProgram->size; i < MEMORY_SIZE_WORDS; i++) memory[i] = 0;
-}
-
-void resetRegisters() {
-	// set all registers to 0
-	for (int i = 0; i < REGISTER_COUNT; i++) registers[i] = 0;
-
-	// set the stack pointer to the end of memory
+	// set stack pointer to end of memory
 	registers[2] = MEMORY_SIZE_WORDS;
 }
 
-void dumpMemory(const char *filepath) {
-	FILE *file = fopen(filepath, "w");
+/**
+ * @brief zeros out the programMemory elements and their associated code
+ */
+void resetPrograms() {
+	// find the index to clear until
+	PROGRAM *lastProgram = (PROGRAM*) listGetElement(&programMemory, programMemory.size-1);
 
+	// clear all those addresses
+	for (int i = 0; i < lastProgram->startAddress + lastProgram->size; i++) memory[i] = 0;
+
+	// clear the list of associated data
+	listClear(&programMemory);
+	programMemory = listCreate();
+}
+
+/**
+ * @brief zeros out all non-program data
+ */
+void resetData() {
+	// find the index to preserve until
+	PROGRAM *lastProgram = (PROGRAM*) listGetElement(&programMemory, programMemory.size-1);
+
+	// clear all words past that point
+	for (int i = lastProgram->startAddress + lastProgram->size; i < MEMORY_SIZE_WORDS; i++) memory[i] = 0;
+}
+
+/**
+ * @brief clears the values in all the registers
+ */
+void resetRegisters() {
+	// store the stack pointer
+	int sp = registers[2];
+
+	// set all registers to 0
+	for (int i = 0; i < REGISTER_COUNT; i++) registers[i] = 0;
+
+	// set the stack pointer to the last value
+	registers[2] = sp;
+}
+
+/**
+ * @brief saves memory prettily to a file
+ * 
+ * @param filepath the destination of the memory dump
+ */
+void dumpMemory(const char *filepath) {
+	// open the file if it can be opened
+	FILE *file = fopen(filepath, "w");
+	if (!file) {
+		printf("error dumping memory! file %s couldnt be created or modified\n", filepath);
+		return;
+	}
+
+	// print each word to a line of the file
 	for (int i = 0; i < MEMORY_SIZE_WORDS; i++)
 		fprintf(file, "%u: %i\n", i, memory[i]);
-
+	
+	// close the file
 	fclose(file);
 }
 
 int main() {
+	// initialize memory
 	resetMemory();
 
-	printf("bytes of memory: %i\n", MEMORY_SIZE_BYTES);
-	printf("words of memory: %i\n", MEMORY_SIZE_WORDS);
+	// print some info for debugging
+	// printf("bytes of memory: %i\n", MEMORY_SIZE_BYTES);
+	// printf("words of memory: %i\n", MEMORY_SIZE_WORDS);
 
-	////
+	/*-- main loop --*/
 
+	// initialize variables
 	OPTION_ID selectedOption;
 	char inBuffer[512];
 	int loop = 1;
 	char *trimmed = NULL;
 
-	clearScreen();
-
+	// loop until `quit`
 	while (loop) {
-		selectedOption = -1;
+		// set default value to NONE
+		selectedOption = NONE;
 
+		// clear screen for options menu
+		clearScreen();
+
+		// print each command and its description
 		for (int i = 0; i < COMMAND_COUNT; i++)
 			printf("%s: %s\n", commands[i].command, commands[i].description);
 		
+		// read and normalize input
 		fgets(inBuffer, sizeof(inBuffer), stdin);
-		
 		trimmed = trim(inBuffer);
 
+		// check the input against each command
 		for (int i = 0; i < COMMAND_COUNT; i++) {
 			if (strcmp(commands[i].command, trimmed) == 0) {
 				selectedOption = i;
@@ -122,43 +180,48 @@ int main() {
 			}
 		}
 
+		// clean up variables
 		free(trimmed);
 		trimmed = NULL;
 
+		// perform the correct action for whichever option was chosen
 		printf("\n");
-
 		switch (selectedOption) {
 			case load:
 				printf("Provide the path of the program to load:\n");
 
+				// read and normalize the inputted filepath
 				fgets(inBuffer, sizeof(inBuffer), stdin);
-
 				trimmed = trim(inBuffer);
 
+				// aattempt to dd the program in that path to memory
 				PROGRAM *newProgram = addProgram(trimmed, memory, &programMemory);
 
+				// clean up
 				free(trimmed);
 				trimmed = NULL;
 
+				// give a message and continue if it failed
 				if (!newProgram) {
 					printf("program couldn't be loaded into memory\n");
 					break;
 				}
 
-				printf("Loaded program into memory at location %i\n", ((PROGRAM *) listGetElement(&programMemory, programMemory.size-1))->startAddress);
+				// otherwise give a message that it succeeded
+				printf("Loaded program into memory at location %i\n", newProgram->startAddress);
 				break;
 
 			case run:
 				printf("Provide the name of the program to run:\n");
 
+				// normalize the input
 				fgets(inBuffer, sizeof(inBuffer), stdin);
-
 				trimmed = trim(inBuffer);
 
 				printf("Attempting to run program \"%s\"\n", trimmed);
 
+				// cheack the provided name against each loaded program
 				PROGRAM *loadedProgram = NULL;
-
 				for (int i = 0; i < programMemory.size; i++) {
 					if (strcmp(trimmed, ((PROGRAM *) listGetElement(&programMemory, i))->name) == 0) {
 						loadedProgram = (PROGRAM *) listGetElement(&programMemory, i);
@@ -166,52 +229,59 @@ int main() {
 					}
 				}
 
+				// if none were found, error out
 				if (!loadedProgram) {
 					printf("Error loading program! Use the \"list\" command to list loaded programs\n");
 					break;
 				}
 
+				// otherwise, give the location in memory
 				printf("Program found at location %i\n", loadedProgram->startAddress);
 				break;
 				
 			case purgep:
+				// just run the helper function
 				printf("Purging programs...\n");
 				resetPrograms();
 				printf("All program memory cleared!\n");
 				break;
 				
 			case purged:
+				// just run the helper function
 				printf("Purging data...\n");
 				resetData();
 				printf("All non-program memory cleared!\n");
 				break;
 				
 			case save:
+				// just run the helper function
 				printf("saving memory to ./output/disk.txt\n");
 				dumpMemory("./output/disk.txt");
 				break;
 
 			case list:
+				// just run the helper function
 				printf("Listing every program name:\n");
 				listMapFunction(&programMemory, *printProgramName);
 				break;
 
 			case quit:
+				// set loop to zero
 				printf("exiting\n");
 				loop = 0;
 				break;
 			
 			default:
+				// bad input, give a message and move on to the next loop
 				printf("this option is not supported\n");
 		}
+
+		// wait for input to allow the user to read before looping
 		printf("\npress ENTER to continue\n");
-
 		fgets(inBuffer, sizeof(inBuffer), stdin);
-
-		clearScreen();
 	}
 
-	////
+	// clean up
 	listClear(&programMemory);
 
 	return 0;
