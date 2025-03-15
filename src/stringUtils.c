@@ -70,24 +70,29 @@ LIST splitSpaces(const char *s) {
 }
 
 char *trim(const char *s) {
+	// find the first non-whitespace character
 	int start = 0;
-
 	while(isspace(*(s + start))) start++;
 
+	// store the new end of the string
 	int end = start + strlen(s + start);
 
+	// make sure the string doesn't have length 0
 	if (end != start) {
-
+		// move the end of the string to the last whitespace character
 		while(isspace(*(s + end - 1))) end--;
 
+		// copy the string, allocating the correct amount of memory
 		char *copy = malloc(sizeof(char) * ((end + 1) - start));
-
 		memcpy(copy, s + start, sizeof(char) * (end - start));
 
+		// add the terminatioin character
 		*(copy + (end - start)) = 0;
 
+		// return the new string
 		return copy;
 	} else {
+		// return an empty string if something breaks
 		char *copy = malloc(sizeof(char));
 		*copy = 0;
 		return copy;
@@ -95,11 +100,14 @@ char *trim(const char *s) {
 }
 
 char *upper(const char *s) {
+	// precompute the string length and allocate memory for the copy
 	int len = strlen(s) + 1;
 	char *str = malloc(sizeof(char) * len);
 
+	// replace its character with its uppercase equivalent (when possible)
 	for (int i = 0; i < len; i++)
 		str[i] = (s[i] >= 'a' && s[i] <= 'z') ? s[i] + 'A' - 'a' : s[i];
-
+	
+	// return the final string
 	return str;
 }
