@@ -6,38 +6,57 @@
 #include <string.h>
 
 const OpCodeKVPair OPCODES[NUM_OPCODES] = {
-	{0b00000, "AND"},
-	{0b00001, "OR"},
-	{0b00010, "XOR"},
-	{0b00011, "ADD"},
-	{0b00100, "ADDI"},
-	{0b00101, "SW"},
-	{0b00110, "LW"},
-	{0b00111, "BEQ"},
-	{0b01000, "BLT"},
-	{0b01111, "LABEL"}
+	{AND,   "AND"  },
+	{OR,    "OR"   },
+	{XOR,   "XOR"  },
+	{ADD,   "ADD"  },
+	{ADDI,  "ADDI" },
+	{SW,    "SW"   },
+	{LW,    "LW"   },
+	{BEQ,   "BEQ"  },
+	{BLT,   "BLT"  },
+	{LABEL, "LABEL"}
 };
 
 unsigned int assembleLine(const char *assembly) {
-	int result = 0;
-	int fieldCount;
-	LIST splitLine = splitSpaces(assembly);
+	int result = -1;
+
+	char *trimmedAssembly = trim(assembly);
+
+	LIST splitLine = splitSpaces(trimmedAssembly);
 
 	char *operation = upper(listGetElement(&splitLine, 0));
 
 	for (int i = 0; i < NUM_OPCODES; i++) {
 		if (strcmp(operation, OPCODES[i].decoded) == 0) {
-			result += OPCODES[i].encoded;
+			result = OPCODES[i].encoded;
+			break;
 		}
 	}
+	
+	if (*trimmedAssembly == ':') {
+		if (splitLine.size == 1) result = LABEL;
+		else {
+			printf("error assembling line! bad label \"%s\"\n", trimmedAssembly + 1);
+			result = ERROR;
+		}
+	} else if (splitLine.size != NUM_ARGUMENTS) {
+		printf("error assembling line! wrong number of arguments:\nExpected: %i\nRecieved: %i\n", NUM_ARGUMENTS, splitLine.size);
+		result = ERROR;
+	} else if (result == -1) {
+		printf("error assembling line! bad isntruction %s\n", (char *) listGetElement(&splitLine, 0));
+		result = ERROR;
+	} else {
 
-	result += (atoi(listGetElement(&splitLine, 1)) & 0b11111) << 5;
-	result += (atoi(listGetElement(&splitLine, 2)) & 0b11111) << 10;
-	result += (atoi(listGetElement(&splitLine, 3)) & 0b11111111111111111) << 15;
+		result += (atoi(listGetElement(&splitLine, 1)) & 0b11111) << 5;
+		result += (atoi(listGetElement(&splitLine, 2)) & 0b11111) << 10;
+		result += (atoi(listGetElement(&splitLine, 3)) & 0b11111111111111111) << 15;
+	}
 
 	listClear(&splitLine);
 	free(operation);
-
+	free(trimmedAssembly);
+	
 	return result;
 }
 
@@ -46,19 +65,30 @@ LIST *assembleFile(const char *path) {
 	FILE *inFile = fopen(path, "r");
 
 	if (!inFile) {
-		printf("error reading file at %s\n", path);
+		printf("error accessing file at %s\n", path);
 		return NULL;
 	}
 
 	LIST *machineCodeList = malloc(sizeof(LIST));
 	*machineCodeList = listCreate();
 	
-
+	int line = 0;
 	unsigned int *currentInstruction = NULL;
 	while (fgets(buffer, sizeof(buffer), inFile)) {
+		line++;
+
+		if (*buffer == '\n') continue;
+
 		currentInstruction = malloc(sizeof(unsigned int));
 
 		*currentInstruction = assembleLine(buffer);
+
+		if ((*currentInstruction & 0b11111) == ERROR) {
+			printf("Error assembling %s at line %i!\n", path, line);
+			listClear(machineCodeList);
+			free(machineCodeList);
+			return NULL;
+		}
 		
 		listAppendItem(machineCodeList, currentInstruction);
 		currentInstruction = NULL;

@@ -69,21 +69,20 @@ LIST splitSpaces(const char *s) {
 	return sliced;
 }
 
-char *trim(char *s) {
-	char *start = s;
-	start = s;
+char *trim(const char *s) {
+	int start = 0;
 
-	while(isspace(*start)) start++;
+	while(isspace(*(s + start))) start++;
 
-	char *end = start + strlen(start);
+	int end = start + strlen(s + start);
 
 	if (end != start) {
 
-		while(isspace(*(end - 1))) end--;
+		while(isspace(*(s + end - 1))) end--;
 
 		char *copy = malloc(sizeof(char) * ((end + 1) - start));
 
-		memcpy(copy, start, sizeof(char) * (end - start));
+		memcpy(copy, s + start, sizeof(char) * (end - start));
 
 		*(copy + (end - start)) = 0;
 

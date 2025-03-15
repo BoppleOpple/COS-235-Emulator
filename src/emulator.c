@@ -152,7 +152,7 @@ int main() {
 				trimmed = NULL;
 
 				if (!newProgram) {
-					printf("program couldnt be loaded into memory");
+					printf("program couldn't be loaded into memory\n");
 					break;
 				}
 

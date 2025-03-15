@@ -29,6 +29,6 @@ LIST split(const char *s, char character);
  */
 LIST splitSpaces(const char *s);
 
-char *trim(char *s);
+char *trim(const char *s);
 
 char *upper(const char *s);
