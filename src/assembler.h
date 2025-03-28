@@ -16,7 +16,8 @@ typedef enum : unsigned int {
 	LW,
 	BEQ,
 	BLT,
-	LABEL = 0b01111
+	LABEL = 0b01111,
+	EXIT = -1
 } OPCODE;
 
 typedef enum : unsigned int {

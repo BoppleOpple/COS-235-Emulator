@@ -138,7 +138,7 @@ void dumpMemory(const char *filepath) {
 
 	char *directory = slice(filepath, 0, filenameIndex + 1);
 
-	// if the directory does not exist, create it with rwx------
+	// if the directory does not exist, create it with drwx------
 	if (stat(directory, &st) == -1) {
 		mkdir(directory, 0700);
 	}
