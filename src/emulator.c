@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/_types/_null.h>
+#include <sys/stat.h>
 
 // define constants
 
@@ -125,8 +127,28 @@ void resetRegisters() {
  * @param filepath the destination of the memory dump
  */
 void dumpMemory(const char *filepath) {
+	// get the directory path from the filepath
+	struct stat st = {0};
+	int filenameIndex = 0;
+
+	// store the last occurance of '/'
+	for (int i = 0; i < strlen(filepath); i++) {
+		if (*(filepath + filenameIndex + i) == '/') filenameIndex = i;
+	}
+
+	char *directory = slice(filepath, 0, filenameIndex + 1);
+
+	// if the directory does not exist, create it with rwx------
+	if (stat(directory, &st) == -1) {
+		mkdir(directory, 0700);
+	}
+
+	free(directory);
+	directory = NULL;
+
 	// open the file if it can be opened
 	FILE *file = fopen(filepath, "w");
+
 	if (!file) {
 		printf("error dumping memory! file %s couldnt be created or modified\n", filepath);
 		return;
