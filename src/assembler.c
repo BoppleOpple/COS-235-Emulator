@@ -6,61 +6,65 @@
 #include <string.h>
 
 // each opcode format as specified by the assignment
-const OpCodeKVPair OPCODES[NUM_OPCODES] = {
-	{AND,   "AND"  },
-	{OR,    "OR"   },
-	{XOR,   "XOR"  },
-	{ADD,   "ADD"  },
-	{ADDI,  "ADDI" },
-	{SW,    "SW"   },
-	{LW,    "LW"   },
-	{BEQ,   "BEQ"  },
-	{BLT,   "BLT"  },
-	{LABEL, "LABEL"}
+const OPCODE_DATA OPCODES[NUM_OPCODES] = {
+	{AND,   "AND"  , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
+	{OR,    "OR"   , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
+	{XOR,   "XOR"  , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
+	{ADD,   "ADD"  , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
+	{ADDI,  "ADDI" , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
+	{SW,    "SW"   , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
+	{LW,    "LW"   , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
+	{BEQ,   "BEQ"  , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
+	{BLT,   "BLT"  , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
+	{LABEL, "LABEL", 0, {}}
 };
 
-unsigned int assembleLine(const char *assembly) {
-	// default to -1, which is impossible with ERROR = 0b11111
-	int result = -1;
+MACHINE_CODE assembleLine(const char *assembly) {
+
+	// TODO
+	// CONVERT THIS TO A RETURNED STRUCT WITH ERROR INFO
+	MACHINE_CODE result = {0, 0};
 
 	// normalize input
 	char *trimmedAssembly = trim(assembly);
 	LIST splitLine = splitSpaces(trimmedAssembly);
 	char *operation = upper(listGetElement(&splitLine, 0));
 
+	OPCODE_DATA *currentInstructionFormat = NULL;
+
 	// find the opcode in the list
-	// if it is not found, result will remain as -1
 	for (int i = 0; i < NUM_OPCODES; i++) {
 		if (strcmp(operation, OPCODES[i].decoded) == 0) {
-			result = OPCODES[i].encoded;
+			result.value = OPCODES[i].encoded;
+			currentInstructionFormat = (OPCODE_DATA*) OPCODES + i;
 			break;
 		}
 	}
 	
-	// if a label is denoted
-	if (*trimmedAssembly == ':') {
+	
+	if (currentInstructionFormat == NULL) { // if opcode is bad...
+		printf("error assembling line! bad isntruction %s\n", (char *) listGetElement(&splitLine, 0));
+		result.status = 1;
+	} else if (*trimmedAssembly == ':') { // otherwise, if a label is denoted
 		// check if it has spaces
-		if (splitLine.size == 1) result = LABEL;
+		if (splitLine.size == 1) result.value = LABEL;
 		else { // error out if it does
 			printf("error assembling line! bad label \"%s\"\n", trimmedAssembly + 1);
-			result = ERROR;
+			result.status = 1;
 		}
-	} else if (splitLine.size != NUM_ARGUMENTS) { // otherwise, if args are bad...
-		printf("error assembling line! wrong number of arguments:\nExpected: %i\nRecieved: %i\n", NUM_ARGUMENTS, splitLine.size);
-		result = ERROR;
-	} else if (result == -1) { // otherwise, if opcode is bad...
-		printf("error assembling line! bad isntruction %s\n", (char *) listGetElement(&splitLine, 0));
-		result = ERROR;
+	} else if (splitLine.size != currentInstructionFormat->fieldCount) { // otherwise, if args are bad...
+		printf("error assembling line! wrong number of arguments:\nExpected: %i\nRecieved: %i\n", currentInstructionFormat->fieldCount, splitLine.size);
+		result.status = 1;
 	} else { // otherwise, assemble the rest of the line and return it
 
 		// rd goes in the next 5 bits
-		result += (atoi(listGetElement(&splitLine, 1)) & 0b11111) << 5;
+		result.value += (atoi(listGetElement(&splitLine, 1)) & 0b11111) << 5;
 
 		// rs1 goes in the next 5 bits
-		result += (atoi(listGetElement(&splitLine, 2)) & 0b11111) << 10;
+		result.value += (atoi(listGetElement(&splitLine, 2)) & 0b11111) << 10;
 
 		// rs2/imm/label goes in remaining bits
-		result += (atoi(listGetElement(&splitLine, 3)) & 0b11111111111111111) << 15;
+		result.value += (atoi(listGetElement(&splitLine, 3)) & 0b11111111111111111) << 15;
 	}
 
 	// clean up
@@ -98,16 +102,18 @@ LIST *assembleFile(const char *path) {
 
 		// allocate memory for the next instruction
 		currentInstruction = malloc(sizeof(unsigned int));
-		*currentInstruction = assembleLine(buffer);
+		MACHINE_CODE assemblyResult = assembleLine(buffer);
 
 		// if an error was thrown, error out and clean up
-		if ((*currentInstruction & 0b11111) == ERROR) {
+		if (assemblyResult.status) {
 			printf("Error assembling %s at line %i!\n", path, line);
 			fclose(inFile);
 			listClear(machineCodeList);
 			free(machineCodeList);
 			return NULL;
 		}
+
+		*currentInstruction = assemblyResult.value;
 		
 		// otherwise, add the code to the list
 		listAppendItem(machineCodeList, currentInstruction);

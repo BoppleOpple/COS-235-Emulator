@@ -3,7 +3,7 @@
 
 #define NUM_OPCODES 10
 #define ASSEMBLER_BUFFER_SIZE 1024
-#define NUM_ARGUMENTS 4
+#define MAX_FIELDS 4
 
 typedef enum : unsigned int {
 	AND,
@@ -15,9 +15,14 @@ typedef enum : unsigned int {
 	LW,
 	BEQ,
 	BLT,
-	LABEL = 0b01111,
-	ERROR = 0b11111 // define an extra error opcode for error checking
+	LABEL = 0b01111
 } OPCODE;
+
+typedef enum : unsigned int {
+	INSTRUCTION,
+	REGISTER,
+	IMMEDIATE
+} FIELD;
 
 /**
  * @brief a struct to hold each instruction and its decoded form, for searches
@@ -26,7 +31,14 @@ typedef enum : unsigned int {
 typedef struct {
 	const OPCODE encoded;
 	const char *decoded;
-} OpCodeKVPair;
+	const int fieldCount;
+	const FIELD fields[MAX_FIELDS];
+} OPCODE_DATA;
+
+typedef struct {
+	unsigned int value;
+	int status;
+} MACHINE_CODE;
 
 /**
  * @brief takes a c-string representing a line of assembly and returns its
@@ -35,7 +47,7 @@ typedef struct {
  * @param assembly the line of assembly to assemble
  * @return unsigned int the resulting machine code or ERROR
  */
-unsigned int assembleLine(const char *assembly);
+MACHINE_CODE assembleLine(const char *assembly);
 
 /**
  * @brief takes a filepath and returns a list of assembled machine code
