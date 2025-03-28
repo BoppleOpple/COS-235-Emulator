@@ -5,6 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+const int FIELD_SIZES[NUM_FIELD_TYPES] = {
+	5,
+	5,
+	17
+};
+
 // each opcode format as specified by the assignment
 const OPCODE_DATA OPCODES[NUM_OPCODES] = {
 	{AND,   "AND"  , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
@@ -35,36 +41,61 @@ MACHINE_CODE assembleLine(const char *assembly) {
 	// find the opcode in the list
 	for (int i = 0; i < NUM_OPCODES; i++) {
 		if (strcmp(operation, OPCODES[i].decoded) == 0) {
-			result.value = OPCODES[i].encoded;
 			currentInstructionFormat = (OPCODE_DATA*) OPCODES + i;
 			break;
 		}
 	}
 	
 	
-	if (currentInstructionFormat == NULL) { // if opcode is bad...
-		printf("error assembling line! bad isntruction %s\n", (char *) listGetElement(&splitLine, 0));
-		result.status = 1;
-	} else if (*trimmedAssembly == ':') { // otherwise, if a label is denoted
+	if (*trimmedAssembly == ':') { // if a label is denoted
 		// check if it has spaces
 		if (splitLine.size == 1) result.value = LABEL;
 		else { // error out if it does
 			printf("error assembling line! bad label \"%s\"\n", trimmedAssembly + 1);
 			result.status = 1;
 		}
+	} else if (currentInstructionFormat == NULL) { // otherwise, if opcode is bad...
+		printf("error assembling line! bad isntruction %s\n", (char *) listGetElement(&splitLine, 0));
+		result.status = 1;
 	} else if (splitLine.size != currentInstructionFormat->fieldCount) { // otherwise, if args are bad...
 		printf("error assembling line! wrong number of arguments:\nExpected: %i\nRecieved: %i\n", currentInstructionFormat->fieldCount, splitLine.size);
 		result.status = 1;
 	} else { // otherwise, assemble the rest of the line and return it
 
-		// rd goes in the next 5 bits
-		result.value += (atoi(listGetElement(&splitLine, 1)) & 0b11111) << 5;
+		for (int i = currentInstructionFormat->fieldCount - 1; i >= 0; i--) {
+			const FIELD *currentField = currentInstructionFormat->fields + i;
+			const int *fieldSize = FIELD_SIZES + *currentField;
+			const char *currentArgument = (char*) listGetElement(&splitLine, i);
 
-		// rs1 goes in the next 5 bits
-		result.value += (atoi(listGetElement(&splitLine, 2)) & 0b11111) << 10;
+			unsigned int value = 0;
 
-		// rs2/imm/label goes in remaining bits
-		result.value += (atoi(listGetElement(&splitLine, 3)) & 0b11111111111111111) << 15;
+			switch (*currentField) {
+				case INSTRUCTION:
+					value = currentInstructionFormat->encoded;
+					break;
+				
+				case REGISTER:
+					if (*currentArgument != 'x') {
+						printf("error assembling line! Registers should begin with 'x' (recieved \"%s\")\n", currentArgument);
+						result.status = 1;
+					} else {
+						value = atoi(currentArgument + 1);
+					}
+					break;
+				
+				case IMMEDIATE:
+					if (*currentArgument == 'x') {
+						printf("error assembling line! Immediates should not begin with 'x' (recieved \"%s\")\n", currentArgument);
+						result.status = 1;
+					} else {
+						value = atoi(currentArgument);
+					}
+					break;
+			}
+
+			result.value <<= *fieldSize;
+			result.value += (value << *fieldSize) >> *fieldSize;
+		}
 	}
 
 	// clean up
