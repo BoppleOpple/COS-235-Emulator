@@ -1,5 +1,6 @@
 #include "program.h"
 #include "assembler.h"
+#include "stringUtils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,9 +19,11 @@ PROGRAM *addProgram(const char *path, int *memory, LIST *programMemory) {
 	// the new program object to store data associated with the block of code
 	PROGRAM *programContainer = malloc(sizeof(PROGRAM));
 
+	int filenameIndex = lastIndexInString(path, '/') + 1;
+	int extensionIndex = filenameIndex + lastIndexInString(path + filenameIndex, '.');
+
 	// set the program name to the path
-	programContainer->name = malloc(sizeof(char) * strlen(path));
-	strcpy(programContainer->name, path);
+	programContainer->name = slice(path, filenameIndex, extensionIndex);
 
 	// insert the program starting at the next available address
 	if (programMemory->size > 0) {

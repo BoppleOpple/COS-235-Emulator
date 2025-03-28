@@ -111,3 +111,13 @@ char *upper(const char *s) {
 	// return the final string
 	return str;
 }
+
+int lastIndexInString(const char *s, char c) {
+	int index = 0;
+
+	for (int i = 0; *(s + i) != 0; i++) {
+		if (*(s + i) == c) index = i;
+	}
+
+	return index;
+}
