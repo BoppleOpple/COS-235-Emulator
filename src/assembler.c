@@ -47,16 +47,16 @@ MACHINE_CODE assembleLine(const char *assembly) {
 	}
 	
 	
-	if (currentInstructionFormat == NULL) { // if opcode is bad...
-		printf("error assembling line! bad isntruction %s\n", (char *) listGetElement(&splitLine, 0));
-		result.status = 1;
-	} else if (*trimmedAssembly == ':') { // otherwise, if a label is denoted
+	if (*trimmedAssembly == ':') { // if a label is denoted
 		// check if it has spaces
 		if (splitLine.size == 1) result.value = LABEL;
 		else { // error out if it does
 			printf("error assembling line! bad label \"%s\"\n", trimmedAssembly + 1);
 			result.status = 1;
 		}
+	} else if (currentInstructionFormat == NULL) { // otherwise, if opcode is bad...
+		printf("error assembling line! bad isntruction %s\n", (char *) listGetElement(&splitLine, 0));
+		result.status = 1;
 	} else if (splitLine.size != currentInstructionFormat->fieldCount) { // otherwise, if args are bad...
 		printf("error assembling line! wrong number of arguments:\nExpected: %i\nRecieved: %i\n", currentInstructionFormat->fieldCount, splitLine.size);
 		result.status = 1;
@@ -95,7 +95,6 @@ MACHINE_CODE assembleLine(const char *assembly) {
 
 			result.value <<= *fieldSize;
 			result.value += (value << *fieldSize) >> *fieldSize;
-			printBinary(result.value);
 		}
 	}
 
