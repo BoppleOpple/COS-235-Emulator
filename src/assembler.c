@@ -151,6 +151,11 @@ LIST *assembleFile(const char *path) {
 		currentInstruction = NULL;
 	}
 
+	currentInstruction = malloc(sizeof(unsigned int));
+	*currentInstruction = EXIT;
+	listAppendItem(machineCodeList, currentInstruction);
+	currentInstruction = NULL;
+
 	//clean up
 	fclose(inFile);
 	

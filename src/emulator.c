@@ -129,16 +129,13 @@ void resetRegisters() {
 void dumpMemory(const char *filepath) {
 	// get the directory path from the filepath
 	struct stat st = {0};
-	int filenameIndex = 0;
 
 	// store the last occurance of '/'
-	for (int i = 0; i < strlen(filepath); i++) {
-		if (*(filepath + filenameIndex + i) == '/') filenameIndex = i;
-	}
+	int filenameIndex = lastIndexInString(filepath, '/') + 1;
 
-	char *directory = slice(filepath, 0, filenameIndex + 1);
+	char *directory = slice(filepath, 0, filenameIndex);
 
-	// if the directory does not exist, create it with rwx------
+	// if the directory does not exist, create it with drwx------
 	if (stat(directory, &st) == -1) {
 		mkdir(directory, 0700);
 	}
@@ -230,7 +227,7 @@ int main() {
 				}
 
 				// otherwise give a message that it succeeded
-				printf("Loaded program into memory at location %i\n", newProgram->startAddress);
+				printf("Loaded program into memory at location %i with name \"%s\"\n", newProgram->startAddress, newProgram->name);
 				break;
 
 			case run:
