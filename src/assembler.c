@@ -5,6 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+const int FIELD_SIZES[NUM_FIELD_TYPES] = {
+	5,
+	5,
+	17
+};
+
 // each opcode format as specified by the assignment
 const OPCODE_DATA OPCODES[NUM_OPCODES] = {
 	{AND,   "AND"  , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
@@ -35,7 +41,6 @@ MACHINE_CODE assembleLine(const char *assembly) {
 	// find the opcode in the list
 	for (int i = 0; i < NUM_OPCODES; i++) {
 		if (strcmp(operation, OPCODES[i].decoded) == 0) {
-			result.value = OPCODES[i].encoded;
 			currentInstructionFormat = (OPCODE_DATA*) OPCODES + i;
 			break;
 		}
@@ -57,14 +62,41 @@ MACHINE_CODE assembleLine(const char *assembly) {
 		result.status = 1;
 	} else { // otherwise, assemble the rest of the line and return it
 
-		// rd goes in the next 5 bits
-		result.value += (atoi(listGetElement(&splitLine, 1)) & 0b11111) << 5;
+		for (int i = currentInstructionFormat->fieldCount - 1; i >= 0; i--) {
+			const FIELD *currentField = currentInstructionFormat->fields + i;
+			const int *fieldSize = FIELD_SIZES + *currentField;
+			const char *currentArgument = (char*) listGetElement(&splitLine, i);
 
-		// rs1 goes in the next 5 bits
-		result.value += (atoi(listGetElement(&splitLine, 2)) & 0b11111) << 10;
+			unsigned int value = 0;
 
-		// rs2/imm/label goes in remaining bits
-		result.value += (atoi(listGetElement(&splitLine, 3)) & 0b11111111111111111) << 15;
+			switch (*currentField) {
+				case INSTRUCTION:
+					value = currentInstructionFormat->encoded;
+					break;
+				
+				case REGISTER:
+					if (*currentArgument != 'x') {
+						printf("error assembling line! Registers should begin with 'x' (recieved \"%s\")\n", currentArgument);
+						result.status = 1;
+					} else {
+						value = atoi(currentArgument + 1);
+					}
+					break;
+				
+				case IMMEDIATE:
+					if (*currentArgument == 'x') {
+						printf("error assembling line! Immediates should not begin with 'x' (recieved \"%s\")\n", currentArgument);
+						result.status = 1;
+					} else {
+						value = atoi(currentArgument);
+					}
+					break;
+			}
+
+			result.value <<= *fieldSize;
+			result.value += (value << *fieldSize) >> *fieldSize;
+			printBinary(result.value);
+		}
 	}
 
 	// clean up
