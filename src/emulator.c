@@ -166,7 +166,7 @@ void dumpMemory(const char *filepath) {
 
 void printRegisters() {
 	for (int i = 0; i < REGISTER_COUNT; i++) 
-		printf("%2i: %i", i, registers[i]);
+		printf("%2i: %i\n", i, registers[i]);
 }
 
 DECODED_INSTRUCTION decode(unsigned int instruction) {
@@ -183,6 +183,11 @@ DECODED_INSTRUCTION decode(unsigned int instruction) {
 		}
 	}
 
+	if (opcode == NULL) {
+		decoded.instruction = EXIT;
+		return decoded;
+	}
+
 	for (int i = 1; i < opcode->fieldCount; i++) {
 		const int *fieldSize = FIELD_SIZES + opcode->fields[i];
 
@@ -197,7 +202,6 @@ DECODED_INSTRUCTION decode(unsigned int instruction) {
 			decoded.arguments[i - 1] <<= (32 - *fieldSize);
 			decoded.arguments[i - 1] >>= (32 - *fieldSize);
 		}
-		printBinary(decoded.arguments[i - 1]);
 	}
 
 	return decoded;
@@ -356,9 +360,11 @@ int main() {
 				while (!exit) {
 					printf("[%4hi]: ", pc);
 					printMachineCode(memory[pc]);
-					
+
 					DECODED_INSTRUCTION decoded = decode(memory[pc]);
 					exit = execute(decoded, &pc);
+
+					pc++;
 				}
 
 				printRegisters();
