@@ -1,7 +1,7 @@
 #pragma once
 #include "list.h"
 
-#define NUM_OPCODES 10
+#define NUM_OPCODES 11
 #define NUM_FIELD_TYPES 3
 #define ASSEMBLER_BUFFER_SIZE 1024
 #define MAX_FIELDS 4
@@ -41,6 +41,10 @@ typedef struct {
 	unsigned int value;
 	int status;
 } MACHINE_CODE;
+
+extern const int FIELD_SIZES[NUM_FIELD_TYPES];
+
+extern const OPCODE_DATA OPCODES[NUM_OPCODES];
 
 /**
  * @brief takes a c-string representing a line of assembly and returns its

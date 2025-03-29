@@ -33,6 +33,11 @@ typedef enum : char {
 	quit
 } OPTION_ID;
 
+typedef struct {
+	OPCODE instruction;
+	int arguments[MAX_FIELDS - 1];
+} DECODED_INSTRUCTION;
+
 // store the command and its description for each command, in the same index as in the above enum
 
 typedef struct {
@@ -162,6 +167,95 @@ void dumpMemory(const char *filepath) {
 	fclose(file);
 }
 
+void printRegisters() {
+	for (int i = 0; i < REGISTER_COUNT; i++) 
+		printf("%2i: %i", i, registers[i]);
+}
+
+DECODED_INSTRUCTION decode(unsigned int instruction) {
+	DECODED_INSTRUCTION decoded = {instruction & 0b11111, {}};
+
+	instruction >>= 5;
+
+	OPCODE_DATA *opcode = NULL;
+
+	for (int i = 0; i < NUM_OPCODES; i++) {
+		if (decoded.instruction == OPCODES[i].encoded) {
+			opcode = (OPCODE_DATA *) OPCODES + i;
+			break;
+		}
+	}
+
+	for (int i = 1; i < opcode->fieldCount; i++) {
+		const int *fieldSize = FIELD_SIZES + opcode->fields[i];
+
+		// mask of `fieldSize` ones
+		unsigned int mask = (-1 << *fieldSize) ^ -1;
+		
+		decoded.arguments[i - 1] = instruction & mask;
+		instruction >>= *fieldSize;
+
+		// if its signed, fill with 1s
+		if (opcode->fields[i] == IMMEDIATE) {
+			decoded.arguments[i - 1] <<= (32 - *fieldSize);
+			decoded.arguments[i - 1] >>= (32 - *fieldSize);
+		}
+		printBinary(decoded.arguments[i - 1]);
+	}
+
+	return decoded;
+}
+
+int execute(DECODED_INSTRUCTION instruction, unsigned int *pc) {
+	switch (instruction.instruction) {
+		case AND:
+			registers[instruction.arguments[0]] = registers[instruction.arguments[1]] & registers[instruction.arguments[2]];
+			break;
+
+		case OR:
+			registers[instruction.arguments[0]] = registers[instruction.arguments[1]] | registers[instruction.arguments[2]];
+			break;
+
+		case XOR:
+			registers[instruction.arguments[0]] = registers[instruction.arguments[1]] ^ registers[instruction.arguments[2]];
+			break;
+		
+		case ADD:
+			registers[instruction.arguments[0]] = registers[instruction.arguments[1]] + registers[instruction.arguments[2]];
+			break;
+		
+		case ADDI:
+			registers[instruction.arguments[0]] = registers[instruction.arguments[1]] + instruction.arguments[2];
+			break;
+		
+		case SW:
+			memory[instruction.arguments[1] + instruction.arguments[2]] = registers[instruction.arguments[0]];
+			break;
+		
+		case LW:
+			registers[instruction.arguments[0]] = memory[instruction.arguments[1] + instruction.arguments[2]];
+			break;
+		
+		case BEQ:
+			if (registers[instruction.arguments[0]] == registers[instruction.arguments[1]]) *pc = instruction.arguments[2];
+			break;
+		
+		case BLT:
+			if (registers[instruction.arguments[0]] < registers[instruction.arguments[1]]) *pc = instruction.arguments[2];
+			break;
+		
+		case EXIT:
+			return 1;
+			break;
+
+		default:
+			// NOOP
+			break;
+	}
+
+	return 0;
+}
+
 int main() {
 	// initialize memory
 	resetMemory();
@@ -259,6 +353,18 @@ int main() {
 
 				// otherwise, give the location in memory
 				printf("Program found at location %i\n", loadedProgram->startAddress);
+
+				unsigned int pc = loadedProgram->startAddress;
+				int exit = 0;
+				while (!exit) {
+					printf("[%4hi]: ", pc);
+					printMachineCode(memory[pc]);
+					
+					DECODED_INSTRUCTION decoded = decode(memory[pc]);
+					exit = execute(decoded, &pc);
+				}
+
+				printRegisters();
 				break;
 				
 			case purgep:

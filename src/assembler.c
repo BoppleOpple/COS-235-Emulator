@@ -22,7 +22,8 @@ const OPCODE_DATA OPCODES[NUM_OPCODES] = {
 	{LW,    "LW"   , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
 	{BEQ,   "BEQ"  , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
 	{BLT,   "BLT"  , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
-	{LABEL, "LABEL", 0, {}}
+	{LABEL, "LABEL", 0, {}},
+	{EXIT, "EXIT", 0, {}}
 };
 
 MACHINE_CODE assembleLine(const char *assembly) {
@@ -92,9 +93,10 @@ MACHINE_CODE assembleLine(const char *assembly) {
 					}
 					break;
 			}
-
 			result.value <<= *fieldSize;
-			result.value += (value << *fieldSize) >> *fieldSize;
+
+			unsigned int mask = (-1 << *fieldSize) ^ -1;
+			result.value += value & mask;
 		}
 	}
 
