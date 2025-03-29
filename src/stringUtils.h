@@ -45,3 +45,5 @@ char *trim(const char *s);
  * @return char* the copied uppercase string
  */
 char *upper(const char *s);
+
+int lastIndexInString(const char *s, char c);
