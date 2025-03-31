@@ -198,7 +198,7 @@ DECODED_INSTRUCTION decode(unsigned int instruction) {
 		instruction >>= *fieldSize;
 
 		// if its signed, fill with 1s
-		if (opcode->fields[i] == IMMEDIATE) {
+		if (opcode->fields[i] == IMMEDIATE_FIELD) {
 			decoded.arguments[i - 1] <<= (32 - *fieldSize);
 			decoded.arguments[i - 1] >>= (32 - *fieldSize);
 		}
@@ -308,8 +308,8 @@ int main() {
 				printf("Provide the path of the program to load:\n");
 
 				// read and normalize the inputted filepath
-				fgets(inBuffer, sizeof(inBuffer), stdin);
-				trimmed = trim(inBuffer);
+				// fgets(inBuffer, sizeof(inBuffer), stdin);
+				trimmed = trim("/Users/williamhillery/Desktop/classes/cos 235/homework3/res/testFile.txt");//inBuffer);
 
 				// aattempt to dd the program in that path to memory
 				PROGRAM *newProgram = addProgram(trimmed, memory, &programMemory);

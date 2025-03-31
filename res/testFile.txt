@@ -6,4 +6,4 @@ ADDI x7 x0 0
 ADDI x5 x5 5
 ADDI x7 x7 1
 
-BLT x7 x6 3
+BLT x7 x6 NEW_LABEL

@@ -1,5 +1,6 @@
 #include "assembler.h"
 #include "list.h"
+#include "printFuncs.h"
 #include "stringUtils.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,23 +14,20 @@ const int FIELD_SIZES[NUM_FIELD_TYPES] = {
 
 // each opcode format as specified by the assignment
 const OPCODE_DATA OPCODES[NUM_OPCODES] = {
-	{AND,   "AND"  , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
-	{OR,    "OR"   , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
-	{XOR,   "XOR"  , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
-	{ADD,   "ADD"  , 4, {INSTRUCTION, REGISTER, REGISTER, REGISTER}},
-	{ADDI,  "ADDI" , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
-	{SW,    "SW"   , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
-	{LW,    "LW"   , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
-	{BEQ,   "BEQ"  , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
-	{BLT,   "BLT"  , 4, {INSTRUCTION, REGISTER, REGISTER, IMMEDIATE}},
+	{AND,   "AND"  , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, REGISTER_FIELD}},
+	{OR,    "OR"   , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, REGISTER_FIELD}},
+	{XOR,   "XOR"  , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, REGISTER_FIELD}},
+	{ADD,   "ADD"  , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, REGISTER_FIELD}},
+	{ADDI,  "ADDI" , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, IMMEDIATE_FIELD}},
+	{SW,    "SW"   , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, IMMEDIATE_FIELD}},
+	{LW,    "LW"   , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, IMMEDIATE_FIELD}},
+	{BEQ,   "BEQ"  , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, LABEL_FIELD}},
+	{BLT,   "BLT"  , 4, {INSTRUCTION_FIELD, REGISTER_FIELD, REGISTER_FIELD, LABEL_FIELD}},
 	{LABEL, "LABEL", 0, {}},
 	{EXIT, "EXIT", 0, {}}
 };
 
-MACHINE_CODE assembleLine(const char *assembly) {
-
-	// TODO
-	// CONVERT THIS TO A RETURNED STRUCT WITH ERROR INFO
+MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address) {
 	MACHINE_CODE result = {0, 0};
 
 	// normalize input
@@ -50,8 +48,17 @@ MACHINE_CODE assembleLine(const char *assembly) {
 	
 	if (*trimmedAssembly == ':') { // if a label is denoted
 		// check if it has spaces
-		if (splitLine.size == 1) result.value = LABEL;
-		else { // error out if it does
+		if (splitLine.size == 1) {
+			for (int i = 0; i < labels->size; i++) {
+				LABEL_DATA *label = listGetElement(labels, i);
+				if (strcmp(label->name, trimmedAssembly + 1) == 0) {
+					label->address = address;
+					break;
+				}
+			}
+			
+			result.value = LABEL;
+		} else { // error out if it does
 			printf("error assembling line! bad label \"%s\"\n", trimmedAssembly + 1);
 			result.status = 1;
 		}
@@ -69,13 +76,14 @@ MACHINE_CODE assembleLine(const char *assembly) {
 			const char *currentArgument = (char*) listGetElement(&splitLine, i);
 
 			unsigned int value = 0;
+			LABEL_DATA *label = NULL;
 
 			switch (*currentField) {
-				case INSTRUCTION:
+				case INSTRUCTION_FIELD:
 					value = currentInstructionFormat->encoded;
 					break;
 				
-				case REGISTER:
+				case REGISTER_FIELD:
 					if (*currentArgument != 'x') {
 						printf("error assembling line! Registers should begin with 'x' (recieved \"%s\")\n", currentArgument);
 						result.status = 1;
@@ -84,12 +92,31 @@ MACHINE_CODE assembleLine(const char *assembly) {
 					}
 					break;
 				
-				case IMMEDIATE:
+				case IMMEDIATE_FIELD:
 					if (*currentArgument == 'x') {
 						printf("error assembling line! Immediates should not begin with 'x' (recieved \"%s\")\n", currentArgument);
 						result.status = 1;
 					} else {
 						value = atoi(currentArgument);
+					}
+					break;
+				
+				case LABEL_FIELD:
+					for (int i = 0; i < labels->size; i++) {
+						if (strcmp(((LABEL_DATA *) listGetElement(labels, i))->name, currentArgument) == 0) {
+							label = listGetElement(labels, i);
+							value = label->id;
+
+							int *ref = malloc(sizeof(int));
+							*ref = address;
+
+							listAppendItem(&label->references, ref);
+							break;
+						}
+					}
+					if (!label) {
+						printf("error assembling line! could not find label \"%s\"\n", currentArgument);
+						result.status = 1;
 					}
 					break;
 			}
@@ -108,8 +135,10 @@ MACHINE_CODE assembleLine(const char *assembly) {
 	// return result or ERROR
 	return result;
 }
+LIST *indexLabels(const char *path) {
+	LIST *labels = malloc(sizeof(LIST));
+	*labels = listCreate();
 
-LIST *assembleFile(const char *path) {
 	// prepare buffer for fgets
 	char buffer[ASSEMBLER_BUFFER_SIZE];
 
@@ -119,6 +148,42 @@ LIST *assembleFile(const char *path) {
 		printf("error accessing file at %s\n", path);
 		return NULL;
 	}
+	int id = 0;
+	while (fgets(buffer, sizeof(buffer), inFile)) {
+		if (*buffer != ':') continue;
+
+		LABEL_DATA *label = malloc(sizeof(LABEL_DATA));
+		label->id = id++;
+		label->name = trim(buffer + 1);
+		label->address = 0;
+		label->references = listCreate();
+
+		listAppendItem(labels, label);
+	}
+
+	fclose(inFile);
+
+	return labels;
+}
+
+void freeLabelData(void *label) {
+	free(((LABEL_DATA*) label)->name);
+	listClear(&((LABEL_DATA*) label)->references);
+	((LABEL_DATA*) label)->name = NULL;
+}
+
+LIST *assembleFile(const char *path, int startAddress) {
+	// prepare buffer for fgets
+	char buffer[ASSEMBLER_BUFFER_SIZE];
+
+	// attempt to open the file, and error out if it doesn't exist
+	FILE *inFile = fopen(path, "r");
+	if (!inFile) {
+		printf("error accessing file at %s\n", path);
+		return NULL;
+	}
+
+	LIST *labels = indexLabels(path);
 
 	// prepare the list of machine code instructions
 	LIST *machineCodeList = malloc(sizeof(LIST));
@@ -135,12 +200,17 @@ LIST *assembleFile(const char *path) {
 
 		// allocate memory for the next instruction
 		currentInstruction = malloc(sizeof(unsigned int));
-		MACHINE_CODE assemblyResult = assembleLine(buffer);
+		MACHINE_CODE assemblyResult = assembleLine(buffer, labels, startAddress + machineCodeList->size);
 
 		// if an error was thrown, error out and clean up
 		if (assemblyResult.status) {
 			printf("Error assembling %s at line %i!\n", path, line);
 			fclose(inFile);
+
+			listMapFunction(labels, *freeLabelData);
+			listClear(labels);
+			free(labels);
+
 			listClear(machineCodeList);
 			free(machineCodeList);
 			return NULL;
@@ -158,8 +228,14 @@ LIST *assembleFile(const char *path) {
 	listAppendItem(machineCodeList, currentInstruction);
 	currentInstruction = NULL;
 
+	printf("LABELS:\n");
+	listMapFunction(labels, *printLabelData);
+
 	//clean up
 	fclose(inFile);
+	listMapFunction(labels, *freeLabelData);
+	listClear(labels);
+	free(labels);
 	
 	// return the list if no errors occured
 	return machineCodeList;

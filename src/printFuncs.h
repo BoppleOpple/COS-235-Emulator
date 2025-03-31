@@ -20,3 +20,10 @@ void printIntPointer(void *i);
  * @param program `PROGRAM *`
  */
 void printProgramName(void *program);
+
+/**
+ * @brief helper function for printing the name field of a LABEL_DATA*
+ * 
+ * @param program `LABEL_DATA *`
+ */
+void printLabelData(void *label);

@@ -21,9 +21,10 @@ typedef enum : unsigned int {
 } OPCODE;
 
 typedef enum : unsigned int {
-	INSTRUCTION,
-	REGISTER,
-	IMMEDIATE
+	INSTRUCTION_FIELD,
+	REGISTER_FIELD,
+	IMMEDIATE_FIELD,
+	LABEL_FIELD
 } FIELD;
 
 /**
@@ -36,6 +37,13 @@ typedef struct {
 	const int fieldCount;
 	const FIELD fields[MAX_FIELDS];
 } OPCODE_DATA;
+
+typedef struct {
+	int id;
+	char *name;
+	unsigned int address;
+	LIST references;
+} LABEL_DATA;
 
 typedef struct {
 	unsigned int value;
@@ -53,7 +61,7 @@ extern const OPCODE_DATA OPCODES[NUM_OPCODES];
  * @param assembly the line of assembly to assemble
  * @return unsigned int the resulting machine code or ERROR
  */
-MACHINE_CODE assembleLine(const char *assembly);
+MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address);
 
 /**
  * @brief takes a filepath and returns a list of assembled machine code
@@ -62,7 +70,7 @@ MACHINE_CODE assembleLine(const char *assembly);
  * @param path the path of the file to assemble
  * @return LIST* the final list, or NULL
  */
-LIST *assembleFile(const char *path);
+LIST *assembleFile(const char *path, int startAddress);
 
 /**
  * @brief takes an integer and returns its binary representation
