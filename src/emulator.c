@@ -198,7 +198,7 @@ DECODED_INSTRUCTION decode(unsigned int instruction) {
 		instruction >>= *fieldSize;
 
 		// if its signed, fill with 1s
-		if (opcode->fields[i] == IMMEDIATE) {
+		if (opcode->fields[i] == IMMEDIATE_FIELD) {
 			decoded.arguments[i - 1] <<= (32 - *fieldSize);
 			decoded.arguments[i - 1] >>= (32 - *fieldSize);
 		}
@@ -308,7 +308,7 @@ int main() {
 				printf("Provide the path of the program to load:\n");
 
 				// read and normalize the inputted filepath
-				fgets(inBuffer, sizeof(inBuffer), stdin);
+				// fgets(inBuffer, sizeof(inBuffer), stdin);
 				trimmed = trim(inBuffer);
 
 				// aattempt to dd the program in that path to memory
@@ -356,18 +356,18 @@ int main() {
 				printf("Program found at location %i\n", loadedProgram->startAddress);
 
 				unsigned int pc = loadedProgram->startAddress;
-				int exit = 0;
-				while (!exit) {
-					printf("[%4hi]: ", pc);
-					printMachineCode(memory[pc]);
+				while (1) {
+					// printf("[%4hi]: ", pc);
+					// printMachineCode(memory[pc]);
 
 					DECODED_INSTRUCTION decoded = decode(memory[pc]);
-					exit = execute(decoded, &pc);
+					if (execute(decoded, &pc)) break;
 
 					pc++;
 				}
 
-				printRegisters();
+				// printRegisters();
+				printf("Program execution complete!\n");
 				break;
 				
 			case purgep:

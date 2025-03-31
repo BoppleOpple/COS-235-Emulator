@@ -2,7 +2,7 @@
 #include "list.h"
 
 #define NUM_OPCODES 11
-#define NUM_FIELD_TYPES 3
+#define NUM_FIELD_TYPES 4
 #define ASSEMBLER_BUFFER_SIZE 1024
 #define MAX_FIELDS 4
 
@@ -21,9 +21,10 @@ typedef enum : unsigned int {
 } OPCODE;
 
 typedef enum : unsigned int {
-	INSTRUCTION,
-	REGISTER,
-	IMMEDIATE
+	INSTRUCTION_FIELD,
+	REGISTER_FIELD,
+	IMMEDIATE_FIELD,
+	LABEL_FIELD
 } FIELD;
 
 /**
@@ -36,6 +37,13 @@ typedef struct {
 	const int fieldCount;
 	const FIELD fields[MAX_FIELDS];
 } OPCODE_DATA;
+
+typedef struct {
+	int id;
+	char *name;
+	unsigned int address;
+	LIST references;
+} LABEL_DATA;
 
 typedef struct {
 	unsigned int value;
@@ -51,18 +59,21 @@ extern const OPCODE_DATA OPCODES[NUM_OPCODES];
  * machine code or ERROR if it it malformed
  *
  * @param assembly the line of assembly to assemble
+ * @param labels the labels to fetch ids from
+ * @param address the address of this line of assembly
  * @return unsigned int the resulting machine code or ERROR
  */
-MACHINE_CODE assembleLine(const char *assembly);
+MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address);
 
 /**
  * @brief takes a filepath and returns a list of assembled machine code
  * instructions (or NULL on error)
  *
  * @param path the path of the file to assemble
+ * @param startAddress the location of the program in memory
  * @return LIST* the final list, or NULL
  */
-LIST *assembleFile(const char *path);
+LIST *assembleFile(const char *path, int startAddress);
 
 /**
  * @brief takes an integer and returns its binary representation

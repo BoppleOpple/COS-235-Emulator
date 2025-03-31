@@ -46,4 +46,11 @@ char *trim(const char *s);
  */
 char *upper(const char *s);
 
+/**
+ * @brief returns the index of the last occurance of a character in a c-string
+ * 
+ * @param s the string to search
+ * @param c the character to search for
+ * @return int the index of the character
+ */
 int lastIndexInString(const char *s, char c);

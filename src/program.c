@@ -6,9 +6,16 @@
 #include <string.h>
 
 PROGRAM *addProgram(const char *path, int *memory, LIST *programMemory) {
+	int startAddress = 0;
+	// insert the program starting at the next available address
+	if (programMemory->size > 0) {
+		PROGRAM *lastProgram = (PROGRAM *) listGetElement(programMemory, programMemory->size-1);
+
+		startAddress = lastProgram->startAddress + lastProgram->size;
+	}
 
 	// first, assemble the file
-	LIST *machineCodeList = assembleFile(path);
+	LIST *machineCodeList = assembleFile(path, startAddress);
 
 	// if any error occurs, exit before writing to memory
 	if (!machineCodeList) {
@@ -24,17 +31,8 @@ PROGRAM *addProgram(const char *path, int *memory, LIST *programMemory) {
 
 	// set the program name to the path
 	programContainer->name = slice(path, filenameIndex, extensionIndex);
-
-	// insert the program starting at the next available address
-	if (programMemory->size > 0) {
-		PROGRAM *lastProgram = (PROGRAM *) listGetElement(programMemory, programMemory->size-1);
-
-		programContainer->startAddress = lastProgram->startAddress + lastProgram->size;
-	} else {
-		programContainer->startAddress = 0;
-	}
-
 	programContainer->size = machineCodeList->size;
+	programContainer->startAddress = startAddress;
 
 	// once all fields are set, document the program data
 	listAppendItem(programMemory, programContainer);

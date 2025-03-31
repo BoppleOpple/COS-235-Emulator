@@ -9,7 +9,7 @@ typedef struct {
 } PROGRAM;
 
 /**
- * @brief 
+ * @brief loads a program into memory and records it in program memory
  * 
  * @param path a const c-string containing the path of the assembly code
  * @param memory a pointer to the int array representation of memory
