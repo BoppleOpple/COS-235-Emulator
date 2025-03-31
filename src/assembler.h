@@ -59,6 +59,8 @@ extern const OPCODE_DATA OPCODES[NUM_OPCODES];
  * machine code or ERROR if it it malformed
  *
  * @param assembly the line of assembly to assemble
+ * @param labels the labels to fetch ids from
+ * @param address the address of this line of assembly
  * @return unsigned int the resulting machine code or ERROR
  */
 MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address);
@@ -68,6 +70,7 @@ MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address);
  * instructions (or NULL on error)
  *
  * @param path the path of the file to assemble
+ * @param startAddress the location of the program in memory
  * @return LIST* the final list, or NULL
  */
 LIST *assembleFile(const char *path, int startAddress);

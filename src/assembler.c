@@ -71,20 +71,26 @@ MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address) {
 		result.status = 1;
 	} else { // otherwise, assemble the rest of the line and return it
 
+		// iterate through the fields present in the instruction start at the most
+		// significant and move right, to allow everything to be operated on in the
+		// least significant bits
 		for (int i = currentInstructionFormat->fieldCount - 1; i >= 0; i--) {
 			const FIELD *currentField = currentInstructionFormat->fields + i;
 			const int *fieldSize = FIELD_SIZES + *currentField;
 			const char *currentArgument = (char*) listGetElement(&splitLine, i);
 
+			// variables for the switch statement
 			unsigned int value = 0;
 			LABEL_DATA *label = NULL;
 
 			switch (*currentField) {
 				case INSTRUCTION_FIELD:
+					// for the instruction field, the value is already parsed
 					value = currentInstructionFormat->encoded;
 					break;
 				
 				case REGISTER_FIELD:
+					// registers must begin with 'x'
 					if (*currentArgument != 'x') {
 						printf("error assembling line! Registers should begin with 'x' (recieved \"%s\")\n", currentArgument);
 						result.status = 1;
@@ -94,6 +100,7 @@ MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address) {
 					break;
 				
 				case IMMEDIATE_FIELD:
+					// immediates must NOT begin with 'x'
 					if (*currentArgument == 'x') {
 						printf("error assembling line! Immediates should not begin with 'x' (recieved \"%s\")\n", currentArgument);
 						result.status = 1;
@@ -103,9 +110,12 @@ MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address) {
 					break;
 				
 				case LABEL_FIELD:
+					// labels must exist in the passed label list
 					for (int i = 0; i < labels->size; i++) {
 						if (strcmp(((LABEL_DATA *) listGetElement(labels, i))->name, currentArgument) == 0) {
 							label = listGetElement(labels, i);
+
+							// fill the field with the label id, to be processed later
 							value = label->id;
 
 							int *ref = malloc(sizeof(int));
@@ -121,8 +131,10 @@ MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address) {
 					}
 					break;
 			}
+			// move the old data back to make room for the new field
 			result.value <<= *fieldSize;
 
+			// mask the field to keep it in bounds and add it to result
 			unsigned int mask = (-1 << *fieldSize) ^ -1;
 			result.value += value & mask;
 		}
@@ -173,6 +185,67 @@ void freeLabelData(void *label) {
 	((LABEL_DATA*) label)->name = NULL;
 }
 
+void updateLabels(LIST *labels, LIST *machineCodeList, int startAddress) {
+	// for each reference of each label...
+	for (int i = 0; i < labels->size; i++) {
+		LABEL_DATA *label = listGetElement(labels, i);
+
+		for (int j = 0; j < label->references.size; j++) {
+			// fetch the specified instruction
+			int index = *(int*) listGetElement(&label->references, j) - startAddress;
+			unsigned int *updatedInstruction = (unsigned int*) listGetElement(machineCodeList, index);
+
+			// find the correct opcode
+			for (int k = 0; k < NUM_OPCODES; k++) {
+				if (OPCODES[k].encoded == (*updatedInstruction & 0b11111)) {
+					// store the lowest bit of the current field, so only that fields bits may be modified later
+					int fieldLowestBit = 0;
+
+					// find the corresponding label field
+					for (int l = 0; l < OPCODES[k].fieldCount; l++) {
+						FIELD field = OPCODES[k].fields[l];
+						int fieldSize = FIELD_SIZES[field];
+
+						// consider LABEL_FIELD describes the 3 highest-order bits of an 8-bit number
+						if (field == LABEL_FIELD) {
+							// then, mask is 00000111
+							unsigned int mask = (-1 << fieldSize) ^ -1;
+
+							// and the value of the current field can be found by shifting the data to align the lowest-order bit with the 0 bit:
+							// data:  1011 1001
+							// field: 1110 0000
+							// mask:  0000 0111
+							//
+							//   data >> 5 | 0000 0101 (1100 1)
+							// & mask      | 0000 0111
+							// -----------------------
+							//   id        | 0000 0101
+							int id = (*updatedInstruction >> fieldLowestBit) & mask;
+
+							// if the id matches, the address should be inserted
+							// this can be done by cutting the fiels out of the instruction and summing that with the new data shifted to the correct bit:
+							// data:  1011 1001
+							// field: 1110 0000
+							//
+							//   other data |    1 1001
+							// + new data   | 011      
+							// ------------------------
+							//   new instr. | 0111 1001
+							if (id == label->id)
+								*updatedInstruction = (*updatedInstruction & ((mask << fieldLowestBit) ^ -1)) + ((label->address & mask) << fieldLowestBit);
+						}
+
+						fieldLowestBit += fieldSize;
+					}
+					break;
+				}
+			} // end of opcode loop, can be broken
+
+		} // end of reference loop
+
+	} // end of label loop
+}
+
 LIST *assembleFile(const char *path, int startAddress) {
 	// prepare buffer for fgets
 	char buffer[ASSEMBLER_BUFFER_SIZE];
@@ -208,10 +281,12 @@ LIST *assembleFile(const char *path, int startAddress) {
 			printf("Error assembling %s at line %i!\n", path, line);
 			fclose(inFile);
 
+			// free label list
 			listMapFunction(labels, *freeLabelData);
 			listClear(labels);
 			free(labels);
 
+			// free machine code list
 			listClear(machineCodeList);
 			free(machineCodeList);
 			return NULL;
@@ -224,50 +299,20 @@ LIST *assembleFile(const char *path, int startAddress) {
 		currentInstruction = NULL;
 	}
 
+	// printf("LABELS:\n");
+	// listMapFunction(labels, *printLabelData);
+
+	// replace the label ids with the correct addresses
+	updateLabels(labels, machineCodeList, startAddress);
+
+	// finally, add an exit instruction
 	currentInstruction = malloc(sizeof(unsigned int));
 	*currentInstruction = EXIT;
 	listAppendItem(machineCodeList, currentInstruction);
 	currentInstruction = NULL;
 
-	printf("LABELS:\n");
-	listMapFunction(labels, *printLabelData);
 
-
-	for (int i = 0; i < labels->size; i++) {
-		LABEL_DATA *label = listGetElement(labels, i);
-
-		for (int j = 0; j < label->references.size; j++) {
-			int index = *(int*) listGetElement(&label->references, j) - startAddress;
-
-			unsigned int *updatedInstruction = (unsigned int*) listGetElement(machineCodeList, index);
-			OPCODE opcode = *updatedInstruction & 0b11111;
-
-			for (int k = 0; k < NUM_OPCODES; k++) {
-				if (OPCODES[k].encoded == opcode) {
-					int bit = 0;
-
-					for (int l = 0; l < OPCODES[k].fieldCount; l++) {
-						FIELD field = OPCODES[k].fields[l];
-						int fieldSize = FIELD_SIZES[field];
-
-						if (field == LABEL_FIELD) {
-							unsigned int mask = (-1 << fieldSize) ^ -1;
-							int id = (*updatedInstruction >> bit) & mask;
-							if (id == label->id) {
-								printMachineCode(*updatedInstruction);
-								*updatedInstruction = (*updatedInstruction & ((mask << bit) ^ -1)) + ((label->address & mask) << bit);
-								printMachineCode(*updatedInstruction);
-							}
-						}
-						bit += fieldSize;
-					}
-					break;
-				}
-			}
-		}
-	}
-
-	//clean up
+	// clean up
 	fclose(inFile);
 	listMapFunction(labels, *freeLabelData);
 	listClear(labels);
