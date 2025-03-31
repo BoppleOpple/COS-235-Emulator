@@ -309,7 +309,7 @@ int main() {
 
 				// read and normalize the inputted filepath
 				// fgets(inBuffer, sizeof(inBuffer), stdin);
-				trimmed = trim("/Users/williamhillery/Desktop/classes/cos 235/homework3/res/testFile.txt");//inBuffer);
+				trimmed = trim(inBuffer);
 
 				// aattempt to dd the program in that path to memory
 				PROGRAM *newProgram = addProgram(trimmed, memory, &programMemory);
