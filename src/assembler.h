@@ -2,7 +2,7 @@
 #include "list.h"
 
 #define NUM_OPCODES 11
-#define NUM_FIELD_TYPES 3
+#define NUM_FIELD_TYPES 4
 #define ASSEMBLER_BUFFER_SIZE 1024
 #define MAX_FIELDS 4
 

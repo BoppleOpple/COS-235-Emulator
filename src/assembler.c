@@ -9,6 +9,7 @@
 const int FIELD_SIZES[NUM_FIELD_TYPES] = {
 	5,
 	5,
+	17,
 	17
 };
 
@@ -230,6 +231,41 @@ LIST *assembleFile(const char *path, int startAddress) {
 
 	printf("LABELS:\n");
 	listMapFunction(labels, *printLabelData);
+
+
+	for (int i = 0; i < labels->size; i++) {
+		LABEL_DATA *label = listGetElement(labels, i);
+
+		for (int j = 0; j < label->references.size; j++) {
+			int index = *(int*) listGetElement(&label->references, j) - startAddress;
+
+			unsigned int *updatedInstruction = (unsigned int*) listGetElement(machineCodeList, index);
+			OPCODE opcode = *updatedInstruction & 0b11111;
+
+			for (int k = 0; k < NUM_OPCODES; k++) {
+				if (OPCODES[k].encoded == opcode) {
+					int bit = 0;
+
+					for (int l = 0; l < OPCODES[k].fieldCount; l++) {
+						FIELD field = OPCODES[k].fields[l];
+						int fieldSize = FIELD_SIZES[field];
+
+						if (field == LABEL_FIELD) {
+							unsigned int mask = (-1 << fieldSize) ^ -1;
+							int id = (*updatedInstruction >> bit) & mask;
+							if (id == label->id) {
+								printMachineCode(*updatedInstruction);
+								*updatedInstruction = (*updatedInstruction & ((mask << bit) ^ -1)) + ((label->address & mask) << bit);
+								printMachineCode(*updatedInstruction);
+							}
+						}
+						bit += fieldSize;
+					}
+					break;
+				}
+			}
+		}
+	}
 
 	//clean up
 	fclose(inFile);
