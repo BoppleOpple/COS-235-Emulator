@@ -356,18 +356,18 @@ int main() {
 				printf("Program found at location %i\n", loadedProgram->startAddress);
 
 				unsigned int pc = loadedProgram->startAddress;
-				int exit = 0;
-				while (!exit) {
-					printf("[%4hi]: ", pc);
-					printMachineCode(memory[pc]);
+				while (1) {
+					// printf("[%4hi]: ", pc);
+					// printMachineCode(memory[pc]);
 
 					DECODED_INSTRUCTION decoded = decode(memory[pc]);
-					exit = execute(decoded, &pc);
+					if (execute(decoded, &pc)) break;
 
 					pc++;
 				}
 
-				printRegisters();
+				// printRegisters();
+				printf("Program execution complete!\n");
 				break;
 				
 			case purgep:
