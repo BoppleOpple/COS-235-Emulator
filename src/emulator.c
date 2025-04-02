@@ -308,7 +308,7 @@ int main() {
 				printf("Provide the path of the program to load:\n");
 
 				// read and normalize the inputted filepath
-				// fgets(inBuffer, sizeof(inBuffer), stdin);
+				fgets(inBuffer, sizeof(inBuffer), stdin);
 				trimmed = trim(inBuffer);
 
 				// aattempt to dd the program in that path to memory
