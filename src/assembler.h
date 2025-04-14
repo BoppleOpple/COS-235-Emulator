@@ -6,7 +6,7 @@
 #define ASSEMBLER_BUFFER_SIZE 1024
 #define MAX_FIELDS 4
 
-typedef enum : unsigned int {
+typedef enum : int {
 	AND,
 	OR,
 	XOR,
