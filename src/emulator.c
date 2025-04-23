@@ -161,6 +161,10 @@ void dumpMemory(const char *filepath) {
 		return;
 	}
 
+	printCacheToFile(cache, file);
+
+	fprintf(file, "\nRAM\n");
+
 	// print each word to a line of the file
 	for (int i = 0; i < MEMORY_SIZE_WORDS; i++)
 		fprintf(file, "%u: %i\n", i, memory[i]);

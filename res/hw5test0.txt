@@ -1,0 +1,5 @@
+ADDI x5 x0 999
+SW x5 x2 0
+LW x6 x2 0
+LW x7 x2 -4
+SW x5 x2 -4

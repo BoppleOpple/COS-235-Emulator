@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #define CACHE_BLOCK_FIELD_SIZE 2
 #define CACHE_BLOCK_SIZE 1 << CACHE_BLOCK_FIELD_SIZE
 
@@ -38,3 +39,5 @@ void cacheLoadBlock(CACHE *cache, int *memory, int cacheIndex, int cacheRow, int
 int cacheLoadWord(CACHE *cache, int *memory, int address, int *hits, int *misses);
 
 void cacheStoreWord(CACHE *cache, int *memory, int address, int *hits, int *misses, int data);
+
+void printCacheToFile(CACHE *cache, FILE *f);

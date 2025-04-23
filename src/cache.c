@@ -92,3 +92,5 @@ void cacheStoreWord(CACHE *cache, int *memory, int address, int *hits, int *miss
 		}
 	}
 }
+
+void printCacheToFile(CACHE *cache, FILE *f) {}
