@@ -1,6 +1,6 @@
-build/emulator: build/intermediate/emulator.o build/intermediate/stringUtils.o build/intermediate/list.o build/intermediate/assembler.o build/intermediate/program.o build/intermediate/printFuncs.o
+build/emulator: build/intermediate/emulator.o build/intermediate/stringUtils.o build/intermediate/list.o build/intermediate/assembler.o build/intermediate/program.o build/intermediate/printFuncs.o build/intermediate/cache.o
 	mkdir -p build
-	gcc build/intermediate/emulator.o build/intermediate/stringUtils.o build/intermediate/list.o build/intermediate/assembler.o build/intermediate/program.o build/intermediate/printFuncs.o -o build/emulator -Wall
+	gcc build/intermediate/emulator.o build/intermediate/stringUtils.o build/intermediate/list.o build/intermediate/assembler.o build/intermediate/program.o build/intermediate/printFuncs.o build/intermediate/cache.o -o build/emulator -Wall
 
 build/intermediate/emulator.o: src/emulator.c
 	mkdir -p build/intermediate
@@ -9,6 +9,10 @@ build/intermediate/emulator.o: src/emulator.c
 build/intermediate/printFuncs.o: src/printFuncs.c src/printFuncs.h
 	mkdir -p build/intermediate
 	gcc src/printFuncs.c -c -o build/intermediate/printFuncs.o -Wall
+
+build/intermediate/cache.o: src/cache.c src/cache.h
+	mkdir -p build/intermediate
+	gcc src/cache.c -c -o build/intermediate/cache.o -Wall
 
 build/intermediate/program.o: src/program.c src/program.h
 	mkdir -p build/intermediate

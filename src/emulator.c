@@ -1,4 +1,5 @@
 #include "assembler.h"
+#include "cache.h"
 #include "list.h"
 #include "printFuncs.h"
 #include "program.h"
@@ -59,6 +60,7 @@ const MENU_OPTION commands[COMMAND_COUNT] = {
 
 int memory[MEMORY_SIZE_WORDS];
 int registers[REGISTER_COUNT];
+CACHE *cache;
 
 // create a list for program memory, and ensure there are no garbage values
 LIST programMemory = {0, 0 ,0};
@@ -82,8 +84,11 @@ void resetMemory() {
 	listClear(&programMemory);
 	programMemory = listCreate();
 
+	if (cache) free(cache);
+	cache = createCache();
+
 	// set stack pointer to end of memory
-	registers[2] = MEMORY_SIZE_WORDS;
+	registers[2] = MEMORY_SIZE_WORDS - 1;
 }
 
 /**
@@ -207,7 +212,7 @@ DECODED_INSTRUCTION decode(unsigned int instruction) {
 	return decoded;
 }
 
-int execute(DECODED_INSTRUCTION instruction, unsigned int *pc) {
+int execute(DECODED_INSTRUCTION instruction, unsigned int *pc, int *loadHits, int *loadMisses, int *storeHits, int *storeMisses) {
 	switch (instruction.instruction) {
 		case AND:
 			registers[instruction.arguments[0]] = registers[instruction.arguments[1]] & registers[instruction.arguments[2]];
@@ -230,11 +235,11 @@ int execute(DECODED_INSTRUCTION instruction, unsigned int *pc) {
 			break;
 		
 		case SW:
-			memory[registers[instruction.arguments[1]] + instruction.arguments[2]] = registers[instruction.arguments[0]];
+			cacheStoreWord(cache, memory, registers[instruction.arguments[1]] + instruction.arguments[2], storeHits, storeMisses, registers[instruction.arguments[0]]);
 			break;
 		
 		case LW:
-			registers[instruction.arguments[0]] = memory[registers[instruction.arguments[1]] + instruction.arguments[2]];
+			registers[instruction.arguments[0]] = cacheLoadWord(cache, memory, registers[instruction.arguments[1]] + instruction.arguments[2], loadHits, loadMisses);
 			break;
 		
 		case BEQ:
@@ -255,6 +260,24 @@ int execute(DECODED_INSTRUCTION instruction, unsigned int *pc) {
 	}
 
 	return 0;
+}
+
+void printProgramStats(int loadHits, int loadMisses, int storeHits, int storeMisses) {
+	int loads = loadHits + loadMisses;
+	int stores = storeHits + storeMisses;
+	int total = loads + stores;
+
+	printf("Total Loads/Stores: %i\n", total);
+	printf("Total Hits: %i (%.1f%%)\n", loadHits + storeHits, 100.0 * (float) (loadHits + storeHits) / (float) total);
+	printf("Total Misses: %i (%.1f%%)\n\n", loadMisses + storeMisses, 100.0 * (float) (loadMisses + storeMisses) / (float) total);
+
+	printf("Loads: %i\n", loads);
+	printf("Hits: %i (%.1f%%)\n", loadHits, 100.0 * (float) loadHits / (float) loads);
+	printf("Misses: %i (%.1f%%)\n\n", loadMisses, 100.0 * (float) loadMisses / (float) loads);
+
+	printf("Stores: %i\n", stores);
+	printf("Hits: %i (%.1f%%)\n", storeHits, 100.0 * (float) storeHits / (float) stores);
+	printf("Misses: %i (%.1f%%)\n\n", storeMisses, 100.0 * (float) storeMisses / (float) stores);
 }
 
 int main() {
@@ -356,18 +379,21 @@ int main() {
 				printf("Program found at location %i\n", loadedProgram->startAddress);
 
 				unsigned int pc = loadedProgram->startAddress;
+				int loadHits = 0;
+				int loadMisses = 0;
+				int storeHits = 0;
+				int storeMisses = 0;
 				while (1) {
 					// printf("[%4hi]: ", pc);
 					// printMachineCode(memory[pc]);
 
 					DECODED_INSTRUCTION decoded = decode(memory[pc]);
-					if (execute(decoded, &pc)) break;
+					if (execute(decoded, &pc, &loadHits, &loadMisses, &storeHits, &storeMisses)) break;
 
 					pc++;
 				}
 
-				// printRegisters();
-				printf("Program execution complete!\n");
+				printProgramStats(loadHits, loadMisses, storeHits, storeMisses);
 				break;
 				
 			case purgep:

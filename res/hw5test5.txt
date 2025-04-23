@@ -1,0 +1,5 @@
+ADDI x5 x0 1
+SW x5 x2 0
+SW x5 x2 -1
+SW x5 x2 -2
+SW x5 x2 -3
