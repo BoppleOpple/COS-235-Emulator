@@ -397,6 +397,8 @@ int main() {
 					pc++;
 				}
 
+				evictCache(cache, memory);
+
 				printProgramStats(loadHits, loadMisses, storeHits, storeMisses);
 				break;
 				

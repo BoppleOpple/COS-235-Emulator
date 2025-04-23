@@ -1,4 +1,7 @@
 #include "cache.h"
+#include "assembler.h"
+#include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -20,17 +23,20 @@ CACHE *createCache() {
 }
 
 void evictCache(CACHE *cache, int *memory) {
+	printf("EVICTING CACHE\n");
 	for (int i = 0; i < CACHE_COUNT; i++)
 		for (int j = 0; j < CACHE_BLOCKS; j++)
 			cacheEvictBlock(cache, memory, i, j);
 }
 
 void cacheEvictBlock(CACHE *cache, int *memory, int cacheIndex, int cacheRow) {
-	const int blockAddress = ( cache[cacheIndex].rows[cacheRow].tag << ( CACHE_INDEX_FIELD_SIZE + CACHE_BLOCK_FIELD_SIZE ) ) + ( cacheRow << CACHE_BLOCK_FIELD_SIZE );
+	const int blockAddress = ( ( cache[cacheIndex].rows[cacheRow].tag << CACHE_INDEX_FIELD_SIZE ) + cacheRow ) << CACHE_BLOCK_FIELD_SIZE ;
 
-	if ( cache[cacheIndex].rows[cacheRow].flags & 0b001 )
+	if ( cache[cacheIndex].rows[cacheRow].flags & 0b001 ) {
+		printf("%i/%i -> %i\n", cacheRow, cacheIndex, blockAddress);
 		for (int i = 0; i < CACHE_BLOCK_SIZE; i++)
 			memory[blockAddress + i] = cache[cacheIndex].rows[cacheRow].block[i];
+	}
 
 	cache[cacheIndex].rows[cacheRow].flags = 0b000;
 }
@@ -51,7 +57,7 @@ void cacheLoadBlock(CACHE *cache, int *memory, int cacheIndex, int cacheRow, int
 
 int cacheLoadWord(CACHE *cache, int *memory, int address, int *hits, int *misses) {
 	const unsigned int blockOffset = address & ( ( (unsigned) -1 << CACHE_BLOCK_FIELD_SIZE ) ^ -1 );
-	const unsigned int index = address & ( ( ( (unsigned) -1 << CACHE_INDEX_FIELD_SIZE ) ^ -1 ) << CACHE_BLOCK_FIELD_SIZE );
+	const unsigned int index = (address >> CACHE_BLOCK_FIELD_SIZE) & ( ( ( (unsigned) -1 << CACHE_INDEX_FIELD_SIZE ) ^ -1 ) );
 	const unsigned int tag = address >> ( CACHE_INDEX_FIELD_SIZE + CACHE_BLOCK_FIELD_SIZE );
 
 	int staleCacheIndex = 0;
@@ -80,17 +86,32 @@ int cacheLoadWord(CACHE *cache, int *memory, int address, int *hits, int *misses
 
 void cacheStoreWord(CACHE *cache, int *memory, int address, int *hits, int *misses, int data) {
 	const unsigned int blockOffset = address & ( ( (unsigned) -1 << CACHE_BLOCK_FIELD_SIZE ) ^ -1 );
-	const unsigned int index = address & ( ( ( (unsigned) -1 << CACHE_INDEX_FIELD_SIZE ) ^ -1 ) << CACHE_BLOCK_FIELD_SIZE );
+	const unsigned int index = (address >> CACHE_BLOCK_FIELD_SIZE) & ( ( ( (unsigned) -1 << CACHE_INDEX_FIELD_SIZE ) ^ -1 ) );
 	const unsigned int tag = address >> ( CACHE_INDEX_FIELD_SIZE + CACHE_BLOCK_FIELD_SIZE );
 	
 	cacheLoadWord(cache, memory, address, hits, misses);
 
 	for (int i = 0; i < CACHE_COUNT; i++) {
-		if ( ( cache[index].rows[i].flags & 0b010 ) && ( cache[index].rows[i].tag == tag ) ) {
-			cache[index].rows[i].block[blockOffset] = data;
+		if ( ( cache[i].rows[index].flags & 0b010 ) && ( cache[i].rows[index].tag == tag ) ) {
+			cache[i].rows[index].flags &= 1;
+			cache[i].rows[index].block[blockOffset] = data;
 			break;
 		}
 	}
 }
 
-void printCacheToFile(CACHE *cache, FILE *f) {}
+void printCacheToFile(CACHE *cache, FILE *f) {
+	fprintf(f, "CACHE\n");
+	for (int row = 0; row < CACHE_BLOCKS; row++) {
+		for (int cacheIndex = 0; cacheIndex < CACHE_COUNT; cacheIndex++) {
+			fprintf(f, "%i/%i: ", row, cacheIndex);
+
+			for (int i = 0; i < CACHE_BLOCK_SIZE; i++) {
+				// fprintf(f, "%*s%i ", (int) ( ceil( log10f( (float) INT32_MAX ) ) - ceil( log10f( (float) cache[cacheIndex].rows->block[i] ) ) ), "", cache[cacheIndex].rows->block[i]);
+				fprintf(f, "%i ", cache[cacheIndex].rows[row].block[i]);
+			}
+
+			fprintf(f, "\n");
+		}
+	}
+}
