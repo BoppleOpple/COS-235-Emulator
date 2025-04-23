@@ -4,11 +4,11 @@ ADD x6 x0 x0
 SW x6 x2 0
 ADDI x2 x2 -1
 ADDI x6 x6 1
-BLT x6 x5 LOOP_A
+BLT x6 x5 :LOOP_A
 LW x20 x2 3
 ADDI x21 x0 8
 OR x22 x20 x21
 XOR x23 x22 x22
-BEQ x23 x0 END
+BEQ x23 x0 :END
 SW x5 x2 0
 :END

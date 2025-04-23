@@ -52,7 +52,7 @@ MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address) {
 		if (splitLine.size == 1) {
 			for (int i = 0; i < labels->size; i++) {
 				LABEL_DATA *label = listGetElement(labels, i);
-				if (strcmp(label->name, trimmedAssembly + 1) == 0) {
+				if (strcmp(label->name, trimmedAssembly) == 0) {
 					label->address = address;
 					break;
 				}
@@ -60,7 +60,7 @@ MACHINE_CODE assembleLine(const char *assembly, LIST *labels, int address) {
 			
 			result.value = LABEL;
 		} else { // error out if it does
-			printf("error assembling line! bad label \"%s\"\n", trimmedAssembly + 1);
+			printf("error assembling line! bad label \"%s\"\n", trimmedAssembly);
 			result.status = 1;
 		}
 	} else if (currentInstructionFormat == NULL) { // otherwise, if opcode is bad...
@@ -167,7 +167,7 @@ LIST *indexLabels(const char *path) {
 
 		LABEL_DATA *label = malloc(sizeof(LABEL_DATA));
 		label->id = id++;
-		label->name = trim(buffer + 1);
+		label->name = trim(buffer);
 		label->address = 0;
 		label->references = listCreate();
 
