@@ -230,11 +230,11 @@ int execute(DECODED_INSTRUCTION instruction, unsigned int *pc) {
 			break;
 		
 		case SW:
-			memory[instruction.arguments[1] + instruction.arguments[2]] = registers[instruction.arguments[0]];
+			memory[registers[instruction.arguments[1]] + instruction.arguments[2]] = registers[instruction.arguments[0]];
 			break;
 		
 		case LW:
-			registers[instruction.arguments[0]] = memory[instruction.arguments[1] + instruction.arguments[2]];
+			registers[instruction.arguments[0]] = memory[registers[instruction.arguments[1]] + instruction.arguments[2]];
 			break;
 		
 		case BEQ:
