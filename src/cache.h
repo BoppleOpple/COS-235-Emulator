@@ -30,6 +30,8 @@ CACHE_ROW createCacheRow(char flags);
 
 CACHE *createCache();
 
+void resetCache(CACHE *cache);
+
 void evictCache(CACHE *cache, int *memory);
 
 void cacheEvictBlock(CACHE *cache, int *memory, int cacheIndex, int cacheRow);
